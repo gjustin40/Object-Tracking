@@ -1,0 +1,197 @@
+* Object tracking 종류
+1. Video Tracking : 말 그대로 비디오 내에 물체 tracking
+2. Visual Tracking(Visual target-tracking) : 
+3. Image Tracking
+4. Object Tracking Camera
+
+--------------------------------------------------
+* Object Tracking 문제점
+
+1 Occlusion 문제
+  - occlustion sensitivity로 해결할 수 있따.
+  - occlusion sensitivity가 뭐지? 검색 >>>>
+2 방향과 빛 등에 의해 객체의 형상이 변한다.
+3 Track 해야하니 계산 속도
+  - 시대가 어느 시댄데 fast-RCNN과 Faster-RCNN 얘기를        하지 아무튼 이걸로 RCNN 계열은 해결 가능
+   
+4 다른 유사한 사람을 tracking 하는 문제
+5 배경이 정신없을 때 작은 object tracking 힘듦
+6. 다양한 스케일의 이미지(움직이니까 스케일 계속 변함)
+  - 이거는 이미 다양한 object detection 모델에서 사용하고      있는 Anchor Boxes 방법으로 해결
+  - Image and Feature Pytamid Representations을 이용해서     top-down방식을 사용해 다양한 size의 feature를 추출          그래서 이 방법을 쓰면 scaling issue를 잠재울 수 있음
+7. single shot detection은 작은 object에 대해 추적이 어렵다. 한 번의 pass로 보기 때문에 downsampling을 하는 과정에서 너무 작아져서 정보가 거의 없어짐.
+  - 그래서 다양한 스케일의 feature map을 추출해야함.
+
+--------------------------------------------------
+* 다양한 level의 Object Tracking
+obeject의 수에 따라 다양한 level의 Tracking이 있음
+
+1. Multiple Object Tracking(MOT)
+- multi-target tracking 이라고도 불림. 2개 이상의 object에 대해 tracking 하는 것. 
+- 보통 KITTI에 의해 benchmarking 된다. 
+- In 2021, the best performing multiple object tracking algorithms are DEFT (88.95 MOTA, Multiple Object Tracking Accuracy), CenterTrack ( 89.44 MOTA), and SRK ODESA (90.03 MOTA).
+- MOT와 일반 Object Detection과 비교하면 그냥 object detection은 class에 대해서만 분류하면 되지만, MOT는 각각의 class별로 ID값을 지정해야함
+
+2. Single Ojbect Tracking
+- Visual Object Tracking이라고도 불림
+- SOT의 경우 맨 처음 frame에서 탐지된 것에 bbox를 만들고, 해당 객체만 추적한다. 다른 객체가 있어도 한 개만
+- 첫 번째 frame에서 관심있는 object가 결정되는데, track을 할 object가 initialized된다.
+- 첫 번쨰 frame에서 fixed number of object가 필요하다.
+- frame 중간에 나오는 새로운 object에 대해서는 다루지 못한다. 처음에 주어진 object으로만 탐지
+
+--------------------------------------------------
+* MOT 알고리즘
+- 보통 MOT는 Tracking-by-detection 방법을 사용한다.
+- 모든 frame에 대해 독립적인 detector가 적용을 한 후에 각각의 detection에 대해 tracker가 작동한다. Data Association 부분에서 Tracker가 이미지를 tracking한다.
+- 이때 Trajectories라는 표현을 쓰네.
+- 그리고 각각의 같은 Detections에 대해 ID를 부여한다
+- 크게 2가지 method가 있음
+1. Batch method : future vidoe frame으로부터 오는 정보를 이용해 ID를 부여한다. Non-local info를 사용한다는데, tracking에서 좋은 결과를 보이는 메소드라고 함
+
+2. Online method : future info를 보는 batch method와 달리 현재와 과거 정보를 이용해 conclusions을 한다.
+>> 보통 Batch method가 더 좋은 성능을 보인다.
+
+- 요즘 Tracking by Detection 방식을 사용한다.
+--------------------------------------------------
+MOT의 Stage
+- 대부분의 MOT 알고리즘이 다음과 같은 stage를 따른다고 함. 
+1. Designation or Detection : 각 이미지별로 detection 작업을 해준다. 그러면 각 frame별로 object들의 bbox가 그려진다.
+2. Motion : Feature Extraction 알고리즘을 이용해 각 object들의 feature 추출한다. motion predictors는 각 target들의 후속 위치를 예측하는데 사용한다.
+3. Recall : Motion단계에서 추출한 feature를 이용해 detection들의 similarity를 계산한다. 그리고 그 유사성을 이용해 ID를 부여한다. 
+
+--------------------------------------------------
+유명한 MOT 알고리즘들
+
+- CNN방식이 가장 유명하지만, 다양한 아키텍처들이 개발되었다.
+- RNN, Autoencoder, GANs, SNNs(Siamese NN) 이거는 처음 봄
+- Object Detection 작업이 매 frame마다 하면 좋지만, 계싼량이랑 성능에 너무 안 좋음. 대신에 Object Detction은 한 번만 적용되고 이후에는 object Tracker가 담당해서 나머지 frame을 다룬다. 대박( 근데 중간에 새로운 물체가 오면 우쨰?)
+
+1. OpenCV Object Tracking
+- Object이나 Motion Tracking에 대한 많은 알고리즘 잇음
+- BOOSTING, MIL, KCF, CSRT, MedianFLOW, TLD, MOSSE, GOTURN 등의 object tracker들이 있음, 원하는 goal에 따라 선택
+- CSRT : 최고의 Accuracy, 하지만 최저의 FPS
+- KCF : CSRT보다는 낮은 Accuracy, 하지만 FPS 빠름
+- MOSSE : 졸라 빠르지만 Accuracy 낮음 가장 빠른 알고리즘
+- GOTURN : 유일한 deeplearning base 알고리즘. 
+
+2. DeepSORT
+- 가장 널리 사용되고 있는 알고리즘
+-  모양 정보가 알고리즘에 포함되면서 굉장한 성능개선을 보였다.  Appearance information integration으로 인해 긴 시간의 occlusion을 추적할 수 있게 되었다. 또한 ID 스위치 횟수를 줄였다.
+
+3. MATLAB
+- video tracking 알고리즘을 포함하고 있음
+- CAMShfit, KLT 등의 알고리즘
+
+4. MDNet
+- 빠르고 정확한 모델이고, CNN base이며 R-CNN 모델로부터 영감을 받았다. 
+- Real-time에 가장 적합한 모델
+- 하지만 계산이 너무 복잡하고 공간 면에서도 안 좋지만 그래도 좋은 모델 
+- 계산량을 RoI Pooling을 이용해 해결했다.
+
+
+
+* 성능을 평가하는 방법
+1. Accuracy / Robustness
+2. 
+- 평가하는데 기본이 되는 것은 IOU
+- Accuracy : IOU가 Threshold보다 얼만큼 높은지
+- Robustness : IOU가 THreshold보다 낮은 횟수(위치값을 다시 주어야하는 경우 카운트)
+
+3. MOTA
+- Multi-Ojbect Tracking Accuracy
+
+
+--------------------------------------------------
+
+* OT 입문자가 보면 좋은 논문
+(OT 과거 기술 소개)
+chrome-extension://efaidnbmnnnibpcajpcglclefindmkaj/viewer.html?pdfurl=http%3A%2F%2Fijcsit.com%2Fdocs%2FVolume%25206%2Fvol6issue06%2Fijcsit2015060679.pdf&clen=326800&chunk=true
+
+정리해놓은 블로그
+https://eehoeskrap.tistory.com/90
+
+
+* Visual Tracking 대회
+https://votchallenge.net/
+---------------------------------------------------
+
+--------------------------------------------------
+Object Tracking Model
+
+1. Tracking by Detection
+- IOU Based Object Tracker
+- Feature Based Object Tracker
+- Optical Flow Based Object Tracker
+- Association Method
+
+2. Tracking and Detection(JDE) == Oneshot MOT
+- Multi-Task Deep learning
+- JDE
+- Online Association Startegy for JDE
+>> Tracking Feature와 Detection Feature를 동시에 뽑아서 Association하는 방식
+
+3. Advanced oneshot object tracker
+- 트래커의 프레임워크 개선이 아닌 학습 방법, 모델링 및 추가적인 디테일 부분에서 테크니컬한 방법을 통해 해결
+- 개선할 여지가 많기 때문에 Baseline이라는 이름을 지었따.
+- A Simple for Multi-Object Tracking(== Fair MOT)
+
+
+* SORT(Simple Online and Realtime Tracking)
+--------------------------------------------------
+* 8 OpenCV Object Tracking Algorithm
+1. Boosting Tracker
+- 머신러닝 모델인 Haar cascades(AdaBoost)를 base로 사용
+- 하지만 매우 오래된 모델임 / 느리고 잘 동작하지 않음
+- 그냥 조상우대식이랑 다른 알고리즘과 비교 대상으로 사용됨
+
+2. MIL Tracker
+- Boosting 보다는 좋지만 여전히 좋지 않은 모델
+
+3. KCF Tracker
+- Kerenlized Correlation Filter를 사용함
+- 위에 두 개보다는 좋다.
+- MIL와 유사하고 occlustion에 대해 잘 다루지 못함
+
+4. CSRT Tracker
+- Discriminative Correlation Filter(with Cannel and Spatial Reliability)를 사용
+- KCF보다 좋지만 여전히 느림
+
+5. MedianFlow Tracker
+- reporting failure에 대해 잘 작동함
+- 하지만 모션이 크게 변하는 object에 대해서는 잘 탐지하지 못함
+- Too large of a jump in motion에 취약함
+- 빠르게 움직이거나 appearence가 빠르게 변하는 object
+
+6. TLD Tracker
+- Opencv에서 잘 작동을 안 하는 알고리즘
+- 이 사람도 이게 원래 안되는건지, 알고리즘이 븅딱인건지 모르겠다고 함
+
+7. MOSSE Tracker
+- 매우매우 빠른 알고리즘
+- CSRT나 KCF에 비해 accruacy는 낮지만 속도가 중요하면 탁월한 선택
+
+8. GOTURN Tracker
+- OpenCV에서 유일하게 딥러닝 based 모델
+- 추가적인 model files가 필요함
+- 변화에 대해 잘 탐지하지만 사용하기가 좀 쉽지 않음
+- 나중에 다시 다루지만, 지금은 이 블로그를 참고해라
+- https://learnopencv.com/goturn-deep-learning-based-object-tracking/
+--------------------------------------------------
+* Object Tracking Project(algorithm)
+1. Centroid Tracking(face tracker)
+- 서로 다른 두 object가 가까이 있다가 교차하면 스위칭이 일어남....
+- 각 frame마다 detector를 적용해줘야해서 계싼량 많음
+
+2. OpenCV Trakcer 사용(8가지)
+- Single도 하고
+- Multi도 해보고(단순히 trackers.MultiTracker_create() 차이)
+- multi의 경우 tracker를 많이 추가할수록 느려진다.
+- MultiThread나 MultiProcessing을 이용해 빠르게 가능함
+
+3. People Counter(줄 그어놓고 지나갔는지 안 갔는지)
+- Object Detection과 Trackin을 combine한다.
+- phase1의 경우 detection을 하는데, 매번하면 너무 계산이 많으니 N번마다 실행함
+- phase2에서는 detection된 object마다 object tracker를 만든다. N번째 frame까지 작동하면 다시 또 object detector를 실행함
+- 위 과정 반복
+
+
